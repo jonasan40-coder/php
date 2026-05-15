@@ -1,0 +1,5 @@
+dashboard.php の操作欄に追加するリンク例：
+
+<a class="btn" href="post_survey.php?session_id=<?= h($row['session_id']) ?>">
+    事後アンケート
+</a>
