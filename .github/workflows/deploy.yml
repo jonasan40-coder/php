@@ -22,11 +22,20 @@ jobs:
 
       - name: Deploy to ConoHa
         run: |
+          if [ -z "${{ secrets.CONOHA_PATH }}" ]; then
+            echo "CONOHA_PATH is empty"
+            exit 1
+          fi
+
           rsync -avz \
             --exclude ".git/" \
             --exclude ".github/" \
             --exclude "config.php" \
             --exclude "uploads/" \
             --exclude "backup/" \
+            --exclude "picture/" \
+            --exclude "delivery/" \
+            --exclude "error/" \
+            --exclude "pdfPrint/" \
             -e "ssh -i ~/.ssh/conoha_key -p ${{ secrets.CONOHA_PORT }}" \
-            ./ ${{ secrets.CONOHA_USER }}@${{ secrets.CONOHA_HOST }}:${{ secrets.CONOHA_PATH }}
+            ./ "${{ secrets.CONOHA_USER }}@${{ secrets.CONOHA_HOST }}:${{ secrets.CONOHA_PATH }}"
