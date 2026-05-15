@@ -1,0 +1,32 @@
+name: Deploy to ConoHa WING
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONOHA_SSH_KEY }}" > ~/.ssh/conoha_key
+          chmod 600 ~/.ssh/conoha_key
+          ssh-keyscan -p ${{ secrets.CONOHA_PORT }} ${{ secrets.CONOHA_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to ConoHa
+        run: |
+          rsync -avz \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude "config.php" \
+            --exclude "uploads/" \
+            --exclude "backup/" \
+            -e "ssh -i ~/.ssh/conoha_key -p ${{ secrets.CONOHA_PORT }}" \
+            ./ ${{ secrets.CONOHA_USER }}@${{ secrets.CONOHA_HOST }}:${{ secrets.CONOHA_PATH }}
