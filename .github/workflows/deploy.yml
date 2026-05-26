@@ -18,19 +18,37 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.CONOHA_SSH_KEY }}" > ~/.ssh/conoha_key
           chmod 600 ~/.ssh/conoha_key
-          ssh-keyscan -p ${{ secrets.CONOHA_PORT }} ${{ secrets.CONOHA_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ secrets.CONOHA_PORT }}" "${{ secrets.CONOHA_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy to ConoHa
+      - name: Check required secrets
         run: |
+          if [ -z "${{ secrets.CONOHA_HOST }}" ]; then
+            echo "CONOHA_HOST is empty"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.CONOHA_PORT }}" ]; then
+            echo "CONOHA_PORT is empty"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.CONOHA_USER }}" ]; then
+            echo "CONOHA_USER is empty"
+            exit 1
+          fi
+
           if [ -z "${{ secrets.CONOHA_PATH }}" ]; then
             echo "CONOHA_PATH is empty"
             exit 1
           fi
 
+      - name: Deploy to ConoHa
+        run: |
           rsync -avz \
             --exclude ".git/" \
             --exclude ".github/" \
             --exclude "config.php" \
+            --exclude ".env" \
             --exclude "uploads/" \
             --exclude "backup/" \
             --exclude "picture/" \
