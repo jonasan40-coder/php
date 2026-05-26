@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>終売案内 ログイン</title>
+<title>タスク管理表 ログイン</title>
 <style>
   body{font-family:Meiryo,"Yu Gothic",sans-serif;margin:0;color:#111827;background:#f3f4f6}
   main{max-width:360px;margin:12vh auto;background:#fff;border:1px solid #ddd;padding:24px}
@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <main>
-  <h1>終売案内</h1>
+  <h1>タスク管理表</h1>
   <?php if ($error !== ''): ?><div class="error"><?= h($error) ?></div><?php endif; ?>
   <?php if ($notice !== ''): ?><div class="notice"><?= h($notice) ?></div><?php endif; ?>
   <form method="post">
