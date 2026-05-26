@@ -106,21 +106,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$groups = $pdo->query('SELECT DISTINCT `T$PLNI` AS product_group FROM ttimps210002 WHERE `T$PLNI` IS NOT NULL AND `T$PLNI` <> "" ORDER BY `T$PLNI` LIMIT 500')->fetchAll();
+$groups = $pdo->query(
+    'SELECT product_group
+     FROM (
+       SELECT DISTINCT `T$PLNI` AS product_group
+       FROM ttimps210002
+       WHERE `T$PLNI` IS NOT NULL AND `T$PLNI` <> ""
+       UNION
+       SELECT DISTINCT product_group
+       FROM eol_group_members
+       WHERE product_group IS NOT NULL AND product_group <> ""
+     ) x
+     ORDER BY product_group
+     LIMIT 500'
+)->fetchAll();
+if ($productGroup !== '' && !in_array($productGroup, array_column($groups, 'product_group'), true)) {
+    $groups[] = ['product_group' => $productGroup];
+}
 if ($productGroup !== '') {
     $reasonStmt = $pdo->prepare(
         'SELECT DISTINCT p.reason
          FROM eol_product_status p
          INNER JOIN ttimps210002 m ON m.`T$SPLI` = p.plu_cd
-         WHERE m.`T$PLNI` = :product_group AND p.reason IS NOT NULL AND p.reason <> ""
+         WHERE m.`T$PLNI` = :product_group_master AND p.reason IS NOT NULL AND p.reason <> ""
          UNION
          SELECT DISTINCT reason
          FROM eol_group_members
-         WHERE product_group = :product_group AND reason IS NOT NULL AND reason <> ""
+         WHERE product_group = :product_group_manual AND reason IS NOT NULL AND reason <> ""
          ORDER BY reason
          LIMIT 500'
     );
-    $reasonStmt->execute(['product_group' => $productGroup]);
+    $reasonStmt->execute([
+        'product_group_master' => $productGroup,
+        'product_group_manual' => $productGroup,
+    ]);
     $reasons = $reasonStmt->fetchAll();
 } else {
     $reasons = $pdo->query('SELECT DISTINCT reason FROM eol_product_status WHERE reason IS NOT NULL AND reason <> "" ORDER BY reason LIMIT 500')->fetchAll();

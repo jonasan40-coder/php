@@ -11,6 +11,7 @@ $view = (string) ($_GET['view'] ?? 'all');
 $productGroup = trim((string) ($_GET['product_group'] ?? ''));
 $reason = trim((string) ($_GET['reason'] ?? ''));
 $requestNo = trim((string) ($_GET['request_no'] ?? ''));
+$registeredDate = trim((string) ($_GET['registered_date'] ?? ''));
 $registrant = trim((string) ($_GET['registrant'] ?? ''));
 $dueFrom = trim((string) ($_GET['due_from'] ?? ''));
 $dueTo = trim((string) ($_GET['due_to'] ?? ''));
@@ -48,6 +49,10 @@ if ($requestNo !== '') {
     $where[] = 'p.request_no LIKE :request_no';
     $params['request_no'] = '%' . $requestNo . '%';
 }
+if ($registeredDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $registeredDate) === 1) {
+    $where[] = 'DATE(p.ins_datetime) = :registered_date';
+    $params['registered_date'] = $registeredDate;
+}
 if ($registrant !== '') {
     $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant_login OR dx.created_by_name LIKE :registrant_name))';
     $params['registrant_login'] = '%' . $registrant . '%';
@@ -68,9 +73,13 @@ SELECT
   p.reason,
   p.request_no,
   p.ins_datetime AS registered_at,
-  GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ") AS product_groups
+  COALESCE(
+    GROUP_CONCAT(DISTINCT gm_display.product_group ORDER BY gm_display.product_group SEPARATOR ", "),
+    GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ")
+  ) AS product_groups
 FROM eol_product_status p
 LEFT JOIN ttimps210002 m ON m.`T$SPLI` = p.plu_cd
+LEFT JOIN eol_group_members gm_display ON gm_display.product_no = p.plu_cd AND gm_display.action_type = "add"
 WHERE ' . implode(' AND ', $where) . '
 GROUP BY p.plu_cd, p.plu_name, p.reason, p.request_no, p.ins_datetime
 ORDER BY p.ins_datetime DESC, p.plu_cd
@@ -130,6 +139,7 @@ $today = (new DateTime('today'))->format('Y-m-d');
   <span class="small">
     製品群: <?= h($productGroup ?: '-') ?> /
     申請書: <?= h($requestNo ?: '-') ?> /
+    申請日: <?= h(eol_format_date($registeredDate) ?: '-') ?> /
     登録者: <?= h($registrant ?: '-') ?> /
     <?= h(count($products)) ?>件
   </span>

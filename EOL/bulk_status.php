@@ -49,20 +49,29 @@ if ($requestNo !== '') {
     $params['request_no'] = '%' . $requestNo . '%';
 }
 if ($registrant !== '') {
-    $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant OR dx.created_by_name LIKE :registrant))';
-    $params['registrant'] = '%' . $registrant . '%';
+    $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant_login_id OR dx.created_by_name LIKE :registrant_name))';
+    $params['registrant_login_id'] = '%' . $registrant . '%';
+    $params['registrant_name'] = '%' . $registrant . '%';
 }
 if ($q !== '') {
-    $where[] = '(p.plu_cd LIKE :q OR p.plu_name LIKE :q OR p.reason LIKE :q OR gm_add.reason LIKE :q OR p.request_no LIKE :q)';
-    $params['q'] = '%' . $q . '%';
+    $where[] = '(p.plu_cd LIKE :q_product_no OR p.plu_name LIKE :q_product_name OR p.reason LIKE :q_product_reason OR gm_add.reason LIKE :q_manual_reason OR p.request_no LIKE :q_request_no)';
+    $params['q_product_no'] = '%' . $q . '%';
+    $params['q_product_name'] = '%' . $q . '%';
+    $params['q_product_reason'] = '%' . $q . '%';
+    $params['q_manual_reason'] = '%' . $q . '%';
+    $params['q_request_no'] = '%' . $q . '%';
 }
 
 $sql = '
 SELECT p.plu_cd AS product_no, p.plu_name AS product_name, COALESCE(gm_add.reason, p.reason) AS reason,
        p.request_no, p.ins_datetime AS registered_at,
-       GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ") AS product_groups
+       COALESCE(
+         GROUP_CONCAT(DISTINCT gm_display.product_group ORDER BY gm_display.product_group SEPARATOR ", "),
+         GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ")
+       ) AS product_groups
 FROM eol_product_status p
 LEFT JOIN ttimps210002 m ON m.`T$SPLI` = p.plu_cd
+LEFT JOIN eol_group_members gm_display ON gm_display.product_no = p.plu_cd AND gm_display.action_type = "add"
 ' . $manualJoin . '
 ' . $excludeJoin . '
 WHERE ' . implode(' AND ', $where) . '

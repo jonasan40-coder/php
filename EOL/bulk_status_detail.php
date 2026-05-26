@@ -53,20 +53,29 @@ function eol_bulk_status_products(PDO $pdo, array $filters): array
         $params['request_no'] = '%' . $filters['request_no'] . '%';
     }
     if ($filters['registrant'] !== '') {
-        $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant OR dx.created_by_name LIKE :registrant))';
-        $params['registrant'] = '%' . $filters['registrant'] . '%';
+        $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant_login_id OR dx.created_by_name LIKE :registrant_name))';
+        $params['registrant_login_id'] = '%' . $filters['registrant'] . '%';
+        $params['registrant_name'] = '%' . $filters['registrant'] . '%';
     }
     if ($filters['q'] !== '') {
-        $where[] = '(p.plu_cd LIKE :q OR p.plu_name LIKE :q OR p.reason LIKE :q OR gm_add.reason LIKE :q OR p.request_no LIKE :q)';
-        $params['q'] = '%' . $filters['q'] . '%';
+        $where[] = '(p.plu_cd LIKE :q_product_no OR p.plu_name LIKE :q_product_name OR p.reason LIKE :q_product_reason OR gm_add.reason LIKE :q_manual_reason OR p.request_no LIKE :q_request_no)';
+        $params['q_product_no'] = '%' . $filters['q'] . '%';
+        $params['q_product_name'] = '%' . $filters['q'] . '%';
+        $params['q_product_reason'] = '%' . $filters['q'] . '%';
+        $params['q_manual_reason'] = '%' . $filters['q'] . '%';
+        $params['q_request_no'] = '%' . $filters['q'] . '%';
     }
 
     $sql = '
 SELECT p.plu_cd AS product_no, p.plu_name AS product_name, COALESCE(gm_add.reason, p.reason) AS reason,
        p.request_no, p.ins_datetime AS registered_at,
-       GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ") AS product_groups
+       COALESCE(
+         GROUP_CONCAT(DISTINCT gm_display.product_group ORDER BY gm_display.product_group SEPARATOR ", "),
+         GROUP_CONCAT(DISTINCT m.`T$PLNI` ORDER BY m.`T$PLNI` SEPARATOR ", ")
+       ) AS product_groups
 FROM eol_product_status p
 LEFT JOIN ttimps210002 m ON m.`T$SPLI` = p.plu_cd
+LEFT JOIN eol_group_members gm_display ON gm_display.product_no = p.plu_cd AND gm_display.action_type = "add"
 ' . $manualJoin . '
 ' . $excludeJoin . '
 WHERE ' . implode(' AND ', $where) . '

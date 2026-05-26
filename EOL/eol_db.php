@@ -10,9 +10,6 @@ foreach ($configCandidates as $configPath) {
     if (!is_file($configPath)) {
         continue;
     }
-    if (basename(dirname($configPath)) === 'EOL' && !class_exists('mysqli')) {
-        continue;
-    }
     require_once $configPath;
     break;
 }
@@ -83,7 +80,7 @@ function eol_require_login(): array
 function eol_user_can_edit(): bool
 {
     $user = eol_current_user();
-    return $user !== null && in_array($user['role'] ?? 'editor', ['admin', 'editor'], true);
+    return $user !== null;
 }
 
 function eol_status_color(string $status): string
@@ -102,10 +99,11 @@ function eol_status_options(): array
     return ['未着手', '着手', '完了', '保留', '問い合わせ'];
 }
 
-function eol_kubun_list(): array
+function eol_default_kubun_list(): array
 {
     return [
         'カウントダウン数の確認',
+        'サービス確認',
         'オーダー見直し/リワーク',
         '専用部品の抽出',
         '不要なオーダーのキャンセル',
@@ -115,6 +113,73 @@ function eol_kubun_list(): array
         '後継機',
         '後継機の先行手配確認',
     ];
+}
+
+function eol_ensure_kubun_master(PDO $pdo): void
+{
+    static $ensured = false;
+
+    if ($ensured) {
+        return;
+    }
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS eol_kubun_master (
+          id int NOT NULL AUTO_INCREMENT,
+          kubun_name varchar(255) NOT NULL,
+          sort_order int NOT NULL DEFAULT 0,
+          is_active tinyint(1) NOT NULL DEFAULT 1,
+          created_at datetime DEFAULT CURRENT_TIMESTAMP,
+          updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_eol_kubun_master_name (kubun_name),
+          KEY idx_eol_kubun_master_active_order (is_active, sort_order, id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+    );
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO eol_kubun_master (kubun_name, sort_order, is_active)
+         VALUES (:kubun_name, :sort_order, 1)
+         ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)'
+    );
+    foreach (eol_default_kubun_list() as $index => $kubun) {
+        $stmt->execute([
+            'kubun_name' => $kubun,
+            'sort_order' => ($index + 1) * 10,
+        ]);
+    }
+
+    $ensured = true;
+}
+
+function eol_kubun_list(): array
+{
+    static $kubunList = null;
+
+    if ($kubunList !== null) {
+        return $kubunList;
+    }
+
+    try {
+        $pdo = eol_pdo();
+        eol_ensure_kubun_master($pdo);
+        $rows = $pdo->query(
+            'SELECT kubun_name
+             FROM eol_kubun_master
+             WHERE is_active = 1
+             ORDER BY sort_order, id'
+        )->fetchAll(PDO::FETCH_COLUMN);
+
+        $kubunList = array_values(array_filter(array_map('strval', $rows), static fn(string $kubun): bool => trim($kubun) !== ''));
+        if ($kubunList !== []) {
+            return $kubunList;
+        }
+    } catch (Throwable) {
+        // Fall back so older databases keep working until the master table is deployed.
+    }
+
+    $kubunList = eol_default_kubun_list();
+    return $kubunList;
 }
 
 function eol_format_date(mixed $value): string
@@ -341,6 +406,7 @@ function eol_build_dashboard_groups(array $products, array $latestByProduct, arr
             }
             $request = (string) ($product['request_no'] ?? '') ?: '申請書なし';
             $date = eol_format_date($product['registered_at'] ?? null) ?: '申請日なし';
+            $registeredDate = substr((string) ($product['registered_at'] ?? ''), 0, 10);
             foreach ($productGroups as $group) {
                 $key = $group . '|' . $request . '|' . $date;
                 $groups[$key]['label'] = $group;
@@ -348,6 +414,9 @@ function eol_build_dashboard_groups(array $products, array $latestByProduct, arr
                 $groups[$key]['params'] = [
                     'view' => 'product_group',
                     'product_group' => $group,
+                    'request_no' => (string) ($product['request_no'] ?? ''),
+                    'registered_date' => $registeredDate,
+                    'reason' => (string) ($product['reason'] ?? ''),
                 ];
                 $groups[$key]['products'][] = $product;
             }
@@ -357,10 +426,11 @@ function eol_build_dashboard_groups(array $products, array $latestByProduct, arr
         if ($view === 'request_no') {
             $request = (string) ($product['request_no'] ?? '') ?: '申請書なし';
             $date = eol_format_date($product['registered_at'] ?? null) ?: '申請日なし';
+            $registeredDate = substr((string) ($product['registered_at'] ?? ''), 0, 10);
             $key = $request . '|' . $date;
             $groups[$key]['label'] = $request;
             $groups[$key]['sub_label'] = $date;
-            $groups[$key]['params'] = ['view' => 'request_no', 'request_no' => (string) ($product['request_no'] ?? '')];
+            $groups[$key]['params'] = ['view' => 'request_no', 'request_no' => (string) ($product['request_no'] ?? ''), 'registered_date' => $registeredDate];
             $groups[$key]['products'][] = $product;
             continue;
         }

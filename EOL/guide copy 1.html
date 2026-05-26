@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>終売案内 使い方ガイド</title>
+<style>
+  body{font-family:Meiryo,"Yu Gothic",sans-serif;margin:18px;color:#111827;line-height:1.65}
+  a{color:#2563eb}
+  h1{font-size:24px;margin:0 0 12px}
+  h2{font-size:18px;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
+  h3{font-size:15px;margin:16px 0 6px}
+  code,pre{font-family:Consolas,"Courier New",monospace}
+  pre{background:#f3f4f6;border:1px solid #ddd;padding:10px;overflow:auto}
+  table{border-collapse:collapse;width:100%;margin:8px 0 14px}
+  th,td{border:1px solid #ddd;padding:6px 8px;font-size:13px;vertical-align:top}
+  th{background:#f3f4f6}
+  .nav{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .note{background:#fff7ed;border:1px solid #fed7aa;padding:10px;margin:10px 0}
+  .small{font-size:12px;color:#6b7280}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="index.php">ダッシュボードへ戻る</a>
+  <a href="target_add.php">一括対象追加</a>
+  <a href="bulk_status.php">ステータス一括更新</a>
+</div>
+
+<h1>終売案内 使い方ガイド</h1>
+<p>この画面群は、終売対象品目を登録し、製品群・申請書・登録者ごとに進捗を管理するためのものです。</p>
+
+<h2>1. ログイン</h2>
+<p><code>users.login_id</code> の社員コードでログインします。登録者名は <code>users.name</code> から自動取得されます。</p>
+
+<h2>2. ダッシュボード</h2>
+<p><a href="index.php">ダッシュボード</a> では全体状況を確認します。</p>
+<table>
+  <tr><th>表示単位</th><th>内容</th></tr>
+  <tr><td>全件</td><td>対象品目をグルーピングせず、全件明細で表示します。</td></tr>
+  <tr><td>製品群</td><td>製品群 + 申請書 + 申請日ごとに概要を表示します。</td></tr>
+  <tr><td>申請書</td><td>申請書 + 申請日ごとに概要を表示します。</td></tr>
+  <tr><td>登録者</td><td>登録者ごとに概要を表示します。</td></tr>
+</table>
+<p>検索条件は2段です。</p>
+<table>
+  <tr><th>段</th><th>条件</th></tr>
+  <tr><td>1段目</td><td>製品群、理由、申請書、登録者</td></tr>
+  <tr><td>2段目</td><td>期日From、期日To、検索</td></tr>
+</table>
+<p>製品群、理由、申請書、登録者、検索は部分一致で絞り込めます。</p>
+
+<h2>3. 一括対象追加</h2>
+<p><a href="target_add.php">一括対象追加</a> では、終売対象品目をまとめて登録します。</p>
+<p>Excelから貼り付ける場合は、1列目に製品番号、2列目に製品名を入れてください。どちらも必須です。</p>
+<pre>33801    VERIFONE P400
+92305    ECOA-V100S/SW BAR-SCANNER
+01912    HALLO JP BATTERY CHARGER</pre>
+<table>
+  <tr><th>項目</th><th>説明</th></tr>
+  <tr><td>共通の製品群</td><td>任意です。入力した場合、<code>eol_group_members</code> にも対象として追加されます。</td></tr>
+  <tr><td>共通の理由</td><td>必須です。製品群を入力すると、その製品群に紐づく理由候補が優先表示されます。</td></tr>
+  <tr><td>申請書 request_no</td><td>任意です。申請書単位で管理したい場合に入力します。</td></tr>
+  <tr><td>申請日</td><td>対象品目の申請日として登録します。</td></tr>
+</table>
+<div class="note">同じ製品番号でも、理由・申請書・申請日が違う場合は別対象として登録できます。</div>
+
+<h2>4. ステータス一括更新</h2>
+<p><a href="bulk_status.php">ステータス一括更新</a> では、ダッシュボードと同じ条件で対象を選び、まとめて進捗を登録します。</p>
+<ol>
+  <li>表示単位を選びます。</li>
+  <li>製品群、理由、申請書、登録者、期日などで絞り込みます。</li>
+  <li>対象グループの「詳細・一括登録」を開きます。</li>
+  <li>表示された対象品目を確認します。</li>
+  <li>区分、担当者、期限、ステータス、コメント、詳細、参照URL、添付メモを入力します。</li>
+  <li>一括登録します。</li>
+</ol>
+<p>重複時の処理は次から選べます。</p>
+<table>
+  <tr><th>処理</th><th>意味</th></tr>
+  <tr><td>全件追加</td><td>既存履歴があっても全件に履歴を追加します。</td></tr>
+  <tr><td>既存ありをスキップ</td><td>同じ製品番号 + 区分に履歴があるものは追加しません。</td></tr>
+  <tr><td>完了済みだけスキップ</td><td>現在ステータスが完了のものだけ追加しません。</td></tr>
+</table>
+
+<h2>5. 個別詳細</h2>
+<p>ダッシュボードやグループ詳細のステータスセルをクリックすると、個別の <code>detail.php</code> を開けます。</p>
+<p>個別画面では、1製品 + 1区分に対して履歴を追加できます。一括更新後でも、個別に追記できます。</p>
+
+<h2>6. 進捗の見方</h2>
+<table>
+  <tr><th>表示</th><th>意味</th></tr>
+  <tr><td>5件完了 / 10件</td><td>対象10件のうち5件が完了です。</td></tr>
+  <tr><td>未</td><td>未着手件数です。</td></tr>
+  <tr><td>着</td><td>着手件数です。</td></tr>
+  <tr><td>保</td><td>保留件数です。</td></tr>
+  <tr><td>問</td><td>問い合わせ件数です。</td></tr>
+  <tr><td>期限</td><td>期限切れ件数です。完了済みは期限切れに含めません。</td></tr>
+</table>
+
+<h2>7. 取消</h2>
+<p><a href="batches.php">一括更新履歴</a> から、一括ステータス更新を取消できます。取消は物理削除ではなく、取消済みとして残します。</p>
+
+<p class="small">最終更新: 2026-05-15</p>
+</body>
+</html>
