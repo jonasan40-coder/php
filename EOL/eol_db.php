@@ -348,8 +348,6 @@ function eol_build_dashboard_groups(array $products, array $latestByProduct, arr
                 $groups[$key]['params'] = [
                     'view' => 'product_group',
                     'product_group' => $group,
-                    'request_no' => (string) ($product['request_no'] ?? ''),
-                    'reason' => (string) ($product['reason'] ?? ''),
                 ];
                 $groups[$key]['products'][] = $product;
             }

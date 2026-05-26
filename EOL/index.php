@@ -27,14 +27,16 @@ $where = ['p.ins_datetime >= :from_date'];
 $params = ['from_date' => '2025-01-01 00:00:00'];
 
 if ($productGroup !== '') {
-    $where[] = '(EXISTS (SELECT 1 FROM ttimps210002 mx WHERE mx.`T$SPLI` = p.plu_cd AND mx.`T$PLNI` LIKE :product_group)
-                 OR EXISTS (SELECT 1 FROM eol_group_members ga WHERE ga.product_no = p.plu_cd AND ga.action_type = "add" AND ga.product_group LIKE :product_group))';
-    $params['product_group'] = '%' . $productGroup . '%';
+    $where[] = '(EXISTS (SELECT 1 FROM ttimps210002 mx WHERE mx.`T$SPLI` = p.plu_cd AND mx.`T$PLNI` LIKE :product_group_master)
+                 OR EXISTS (SELECT 1 FROM eol_group_members ga WHERE ga.product_no = p.plu_cd AND ga.action_type = "add" AND ga.product_group LIKE :product_group_add))';
+    $params['product_group_master'] = '%' . $productGroup . '%';
+    $params['product_group_add'] = '%' . $productGroup . '%';
 }
 if ($reason !== '') {
-    $where[] = '(p.reason LIKE :reason
-                 OR EXISTS (SELECT 1 FROM eol_group_members ga WHERE ga.product_no = p.plu_cd AND ga.action_type = "add" AND ga.reason LIKE :reason))';
-    $params['reason'] = '%' . $reason . '%';
+    $where[] = '(p.reason LIKE :reason_main
+                 OR EXISTS (SELECT 1 FROM eol_group_members ga WHERE ga.product_no = p.plu_cd AND ga.action_type = "add" AND ga.reason LIKE :reason_add))';
+    $params['reason_main'] = '%' . $reason . '%';
+    $params['reason_add'] = '%' . $reason . '%';
 }
 if ($productGroup !== '' || $reason !== '') {
     $exclude = 'NOT EXISTS (SELECT 1 FROM eol_group_members ge WHERE ge.product_no = p.plu_cd AND ge.action_type = "exclude"';
@@ -54,12 +56,16 @@ if ($requestNo !== '') {
     $params['request_no'] = '%' . $requestNo . '%';
 }
 if ($registrant !== '') {
-    $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant OR dx.created_by_name LIKE :registrant))';
-    $params['registrant'] = '%' . $registrant . '%';
+    $where[] = 'EXISTS (SELECT 1 FROM eol_detail dx WHERE dx.product_no = p.plu_cd AND dx.voided_at IS NULL AND (dx.created_by_login_id LIKE :registrant_login OR dx.created_by_name LIKE :registrant_name))';
+    $params['registrant_login'] = '%' . $registrant . '%';
+    $params['registrant_name'] = '%' . $registrant . '%';
 }
 if ($q !== '') {
-    $where[] = '(p.plu_cd LIKE :q OR p.plu_name LIKE :q OR p.reason LIKE :q OR p.request_no LIKE :q)';
-    $params['q'] = '%' . $q . '%';
+    $where[] = '(p.plu_cd LIKE :q_plu_cd OR p.plu_name LIKE :q_plu_name OR p.reason LIKE :q_reason OR p.request_no LIKE :q_request_no)';
+    $params['q_plu_cd'] = '%' . $q . '%';
+    $params['q_plu_name'] = '%' . $q . '%';
+    $params['q_reason'] = '%' . $q . '%';
+    $params['q_request_no'] = '%' . $q . '%';
 }
 
 $sql = '
